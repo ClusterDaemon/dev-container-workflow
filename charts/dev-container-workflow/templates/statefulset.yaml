@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "dev-container-workflow.fullname" . }}
+  labels:
+    {{- include "dev-container-workflow.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  serviceName: {{ Chart.Release }}
+  selector:
+    matchLabels:
+      {{- include "dev-container-workflow.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      {{- with .Values.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      labels:
+        {{- include "dev-container-workflow.selectorLabels" . | nindent 8 }}
+    spec:
+      terminationGracePeriodSeconds: 30
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "dev-container-workflow.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+        - name: {{ .Chart.Name }}
+          securityContext:
+            capabilies:
+              {{- toYaml .Values.securityContext.capabilities | nindent 12 }}
+            readOnlyRootFilesystem: {{ default true .Values.securityContext.readOnlyRootFilesystem }}
+            runAsNonRoot: {{ default true .Values.securityContext.runAsNonRoot }}
+            {{- if .Values.securityContext.runAsNonRoot }
+            runAsUser: {{ .Values.user.uid }}
+            {{- end }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 22
+              protocol: TCP
+          livenessProbe:
+            exec:
+              command:
+              - cat
+              - "/home/{{ .Values.user.username }}/.tmux.conf"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+          - name: "home"
+            mountPath: "/home/{{ .Values.user.username }}"
+          - name: "projects"
+            mountPath: "/home/{{ .Values.user.username }}/projects"
+          - name: "aws"
+            mountPath: "/home/{{ .Values.user.username }}/.aws"
+          - name: "ssh"
+            mountPath: "/home/{{ .Values.user.username }}/.ssh"
+      initContainers:
+        - name: "{{ .Chart.Name }}-init"
+          securityContext:
+            capabilies:
+              {{- toYaml .Values.securityContext.capabilities | nindent 12 }}
+            readOnlyRootFilesystem: {{ default true .Values.securityContext.readOnlyRootFilesystem }}
+            runAsNonRoot: {{ default true .Values.securityContext.runAsNonRoot }}
+            {{- if .Values.securityContext.runAsNonRoot }
+            runAsUser: {{ .Values.user.uid }}
+            {{- end }}
+          image: busybox
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command: ['sh', '-c', '/scripts/init.sh']
+          volumeMounts:
+          - name: "home"
+            mountPath: "/home"
+          - name: "scripts"
+            mountPath: "/scripts"
+          - name: "projects"
+            mountPath: "/projects"
+          - name: "git"
+            mountPath: "/git"
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      volumes:
+      - name: "home"
+        emptyDir: {}
+      - name: "scripts"
+        configMap:
+          name: "{{ include 'dev-container-workflow.fullname' . }}-scripts"
+      - name: "git"
+        configMap:
+          name: "{{ include 'dev-container-workflow.fullname' . }}-git"
+      - name: "ssh"
+        secret:
+          secretName: "{{ include 'dev-container-workflow.fullname' . }}-ssh"
+      - name: "aws"
+        secret:
+          secretName: "{{ include 'dev-container-workflow.fullname' . }}-aws"
+      volumeClaimTemplates:
+      - metadata:
+          name: "projects"
+        spec:
+          accessModes: [ {{ .Values.volume.accessMode ]
+          storageClassName: {{ .Values.volume.storageClass | quote }}
+          resources:
+            requests:
+              storage: {{ .Values.volume.request | quote }}
+      {{- end }}
