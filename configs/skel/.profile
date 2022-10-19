@@ -30,6 +30,3 @@ fi
 if [ -d "$HOME/go/bin" ] ; then
     PATH="$HOME/go/bin:$PATH"
 fi
-
-# Aliases
-alias pure-vpn="globalprotect connect -portal webvpn.purestorage.com"
