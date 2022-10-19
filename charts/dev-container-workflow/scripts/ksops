@@ -1,0 +1,7 @@
+#!/bin/sh
+VIADUCT_DIR="$HOME/.config/kustomize/plugin/viaduct.ai/v1"
+if ! [[ -d $VIADUCT_DIR ]]; then
+    mkdir -p $VIADUCT_DIR
+fi
+curl -L "https://github.com/viaduct-ai/kustomize-sops/releases/download/v3.0.2/ksops_3.0.2_Linux_x86_64.tar.gz" \
+    | tar -xzC $VIADUCT_DIR ksops

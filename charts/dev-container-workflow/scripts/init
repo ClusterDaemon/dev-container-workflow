@@ -1,0 +1,10 @@
+#!/bin/sh
+# Written for alpine/git. Depends on curl, git, tar, and ssh (for ssh-keygen)
+export HOME=/home/$USERNAME
+ssh-keygen -t ed25519 -f /etc/ssh/ssh_host_ed25519_key
+./volumes
+./asdf
+./krew
+./ksops
+./vim-configuration
+./tmux-configuration

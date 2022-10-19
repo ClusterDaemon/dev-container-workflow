@@ -1,0 +1,16 @@
+#!/bin/sh
+if ! [[ git -C $HOME/.tmux rev-parse --is-inside-work-tree ]]; then
+    if [[ -d $HOME/.tmux ]]; then
+        rm -r $HOME/.tmux
+    fi
+    git clone git@github.com:ClusterDaemon/tmux.git --single-branch --branch "main" $HOME/.tmux
+else
+    git checkout main --force
+    git pull --force --autostash
+fi
+if ! [[ -L $HOME/.tmux.conf ]]; then
+    if [[ -f $HOME/.tmux.conf ]]; then
+        rm -f $HOME/.tmux.conf
+    fi
+    ln -S $HOME/.tmux/tmux.conf $HOME/.tmux.conf
+fi

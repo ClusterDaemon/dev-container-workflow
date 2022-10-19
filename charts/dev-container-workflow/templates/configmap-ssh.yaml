@@ -1,0 +1,9 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: {{ printf "%s-ssh" (include "dev-container-workflow.fullname" .) }}
+    labels:
+        {{- include "dev-container-workflow.labels" . | nindent 8 }}
+data:
+    authorized_keys: {{ .Values.ssh.authorizedKeys }}
+    config: {{ .Values.ssh.config }}

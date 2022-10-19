@@ -1,0 +1,12 @@
+#!/bin/sh
+if ! [[ git -C $HOME/.asdf rev-parse --is-inside-work-tree ]]; then
+    git clone https://github.com/ClusterDaemon/asdf.git $HOME/.asdf --single-branch --branch ${ASDF_VERSION:-v1.10.2}
+else
+    git -C $HOME/.asdf checkout ${ASDF_VERSION:-v1.10.2}
+    git -C $HOME/.asdf pull 
+fi
+for plugin in $ASDF_PLUGINS; do
+    asdf plugin install $plugin
+    asdf install $plugin latest
+    asdf global $plugin latest
+done

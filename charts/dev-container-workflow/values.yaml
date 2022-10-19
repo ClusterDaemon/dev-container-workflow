@@ -3,13 +3,36 @@ user:
   uid: 1000
   gid: 1000
 
+# Provide base64 encoded values or folded strings. keysSecretName overrides privateKey and publicKey.
+ssh:
+  keysSecretName:
+  privateKey: ""
+  publicKey: ""
+  authorizedKeys: ""
+  config: ""
+
+aws:
+  credentialsSecretName:
+  credentials: ""
+  config: ""
+
+git:
+    config: ""
+
+asdf:
+    version:
+    plugins: "awscli kubectl sops helm kustomize tflint"
+
+krew:
+    plugins:
+
 replicaCount: 1
 
 image:
-  repository: nginx
+  repository: dev-container-workflow
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
+  tag: "latest"
 
 imagePullSecrets: []
 nameOverride: ""
@@ -26,8 +49,8 @@ serviceAccount:
 
 podAnnotations: {}
 
-podSecurityContext: {}
-  # fsGroup: 2000
+podSecurityContext:
+  fsGroup: 1000
 
 securityContext:
   capabilities:
@@ -37,14 +60,16 @@ securityContext:
   runAsNonRoot: true
   runAsUser: 1000
 
+sshPort: 2222
+
 service:
   type: ClusterIP
   port: 22
 
 resources:
   requests:
-    cpu: 100m
-    memory: 128Mi
+    cpu: 1
+    memory: 1Gi
 
 nodeSelector: {}
 

@@ -8,7 +8,7 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: 22
+      targetPort: {{ .Values.sshPort }}
       protocol: TCP
       name: ssh
   selector:

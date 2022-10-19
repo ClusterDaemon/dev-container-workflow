@@ -1,0 +1,44 @@
+#!/bin/sh
+# Depends on git
+
+# Validate volumes
+if ! [[ -w $HOME_VOLUME ]]; then
+    echo "ERROR: Home persistence volume not writable. Unable to configure user applications!"; exit 1
+fi
+AWS=1
+if ! [[ -d $AWS_VOLUME ]]; then
+    echo "WARN: AWS configuration volume not present. Unable to configure AWS CLI."; AWS=0
+fi
+GIT=1
+if ! [[ -d $GIT_VOLUME ]]; then
+    echo "WARN: GIT configuration volume not present. Unable to configure Git CLI."; GIT=0
+fi
+SSH=1
+if ! [[ -d $SSH_VOLUME ]]; then
+    echo "WARN: SSH configuration volume not present. Unable to configure SSH client and authorized_users."; SSH=0
+fi
+
+# Create user home directory if it does not exist
+if ! [[ -d $HOME ]]; then
+    mkdir $HOME
+fi
+
+# Symlink configuration volumes
+if ! [[ -L $HOME/.aws ]]; then
+    if [[ -f $HOME/.aws ]]; then
+        rm -rf $HOME/.aws
+    fi
+    ln -s $AWS_VOLUME $HOME/.aws
+fi
+if ! [[ -L $HOME/.ssh ]]; then
+    if [[ -f $HOME/.ssh ]]; then
+        rm -rf $HOME/.ssh
+    fi
+    ln -s $SSH_VOLUME $HOME/.ssh
+fi
+if ! [[ -L $HOME/.gitconfig ]]; then
+    if [[ -f $HOME/.gitconfig ]]; then
+        rm -f $HOME/.gitconfig
+    fi
+    ln -s $GIT_VOLUME/gitconfig $HOME/.gitconfig
+fi
