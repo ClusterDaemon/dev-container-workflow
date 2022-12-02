@@ -5,4 +5,6 @@ metadata:
     labels:
         {{- include "dev-container-workflow.labels" . | nindent 8 }}
 data:
-    config: {{ .Values.git.config }}
+    {{- with .Values.git.config }}
+    config: {{ . }}
+    {{- end }}

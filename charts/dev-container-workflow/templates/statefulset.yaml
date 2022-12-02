@@ -10,6 +10,15 @@ spec:
   selector:
     matchLabels:
       {{- include "dev-container-workflow.selectorLabels" . | nindent 6 }}
+  volumeClaimTemplates:
+  - metadata:
+      name: "home"
+    spec:
+      accessModes: [ {{ .Values.volume.accessMode }} ]
+      storageClassName: {{ .Values.volume.storageClass | quote }}
+      resources:
+        requests:
+          storage: {{ .Values.volume.request | quote }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -25,76 +34,88 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "dev-container-workflow.serviceAccountName" . }}
+      {{- with .Values.podSecurityContext }}
       securityContext:
-        fsGroup: {{ .Values.user.gid }}
-        runAsUser: {{ .Values.user.uid }}
-        runAsGroup: {{ .Values.user.gid }}
-        fsGroupChangePolicy: "OnRootMismatch"
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
       containers:
         - name: {{ .Chart.Name }}
+          {{- with .Values.securityContext }}
           securityContext:
-            capabilies:
-              {{- toYaml .Values.securityContext.capabilities | nindent 12 }}
-            readOnlyRootFilesystem: {{ default true .Values.securityContext.readOnlyRootFilesystem }}
-            runAsNonRoot: {{ default true .Values.securityContext.runAsNonRoot }}
-          image: "{{ .Values.image.repository | default .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "longshoreman:latest"
+          # image: "{{ .Values.image.repository | default .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: ssh
-              containerPort: {{ .Values.sshPort }}
+              containerPort: 2222
               protocol: TCP
           readinessProbe:
             tcpSocket:
-              port: {{ .Values.sshPort }}
+              port: 2222
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: {{ .Values.sshPort }}
+              port: 2222
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          env:
-            USERNAME: {{ .Values.user.username | quote }}
           volumeMounts:
+          - name: "passwd"
+            mountPath: "/etc/passwd"
+            subPath: "passwd"
           - name: "home"
-            mountPath: {{ printf "/home/%s" .Values.user.username }}
+            mountPath: "/home"
           - name: "aws"
             mountPath: "/mnt/aws"
+          {{- if or .Values.ssh.keysSecretName .Values.ssh.keys }}
           - name: "ssh"
             mountPath: "/mnt/ssh"
+          {{- end }}
           - name: "git"
             mountPath: "/mnt/git"
       initContainers:
         - name: "{{ .Chart.Name }}-init"
           env:
-            USERNAME: {{ .Values.user.username | quote }}
-            HOME_VOLUME: {{ printf "/home/%s" .Values.user.username }}
-            AWS_VOLUME: "/mnt/aws"
-            GIT_VOLUME: "/mnt/git"
-            SSH_VOLUME: "/mnt/ssh"
-            ASDF_VERSION: {{ default "v1.10.2" .Values.asdf.version | quote }}
-            ASDF_PLUGINS: {{ .Values.asdf.plugins | quote }}
-            KREW_PLUGINS: {{ .Values.krew.plugins | quote }}
+            - name: "SCRIPTS_VOLUME"
+              value: "/scripts"
+            - name: "HOME"
+              value: "/home"
+            - name: "AWS_VOLUME"
+              value: "/mnt/aws"
+            - name: "GIT_VOLUME"
+              value: "/mnt/git"
+            - name: "SSH_VOLUME"
+              value: "/mnt/ssh"
+            - name: "ASDF_VERSION"
+              value: {{ .Values.asdf.version | quote }}
+            - name: "ASDF_PLUGINS"
+              value: {{ .Values.asdf.plugins | quote }}
+            - name: "KREW_PLUGINS"
+              value: {{ .Values.krew.plugins | quote }}
+          {{- with .Values.initSecurityContext }}
           securityContext:
-            capabilies:
-              {{- toYaml .Values.securityContext.capabilities | nindent 12 }}
-            readOnlyRootFilesystem: {{ default true .Values.securityContext.readOnlyRootFilesystem }}
-            runAsNonRoot: {{ default true .Values.securityContext.runAsNonRoot }}
-            {{- if .Values.securityContext.runAsNonRoot }}
-            runAsUser: {{ .Values.user.uid }}
-            {{- end }}
-          image: busybox
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+          image: "longshoreman-init:latest"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
-          command: ['sh', '-c', '/scripts/init.sh']
+          workingDir: "/"
+          command: ['sh', '-c', 'sleep 15000']
           volumeMounts:
+          - name: "passwd-init"
+            mountPath: "/etc/passwd"
+            subPath: "passwd"
           - name: "home"
             mountPath: "/home"
           - name: "scripts"
             mountPath: "/scripts"
+          {{- if or .Values.ssh.keysSecretName .Values.ssh.keys }}
           - name: "git"
             mountPath: "/git"
+          {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -108,40 +129,41 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
+      - name: "passwd-init"
+        secret:
+          secretName: {{ printf "%s-passwd-init" (include "dev-container-workflow.fullname" .) }}
+          defaultMode: 0644
+      - name: "passwd"
+        secret:
+          secretName: {{ printf "%s-passwd" (include "dev-container-workflow.fullname" .) }}
+          defaultMode: 0644
       - name: "scripts"
         configMap:
           name: {{ printf "%s-scripts" (include "dev-container-workflow.fullname" .) }}
+          defaultMode: 0550
       - name: "git"
         configMap:
           name: {{ printf "%s-git" (include "dev-container-workflow.fullname" .) }}
       - name: "ssh"
         projected:
           sources:
-            secret:
-              {{- if .Values.ssh.keysSecretName }}
-              secretName: {{ .Values.ssh.keysSecretName | quote }}
-              {{- else }}
-              secretName: {{ printf "%s-ssh-keys" (include "dev-container-workflow.fullname" .) }}
-              {{- end }}
-            configMap:
-              name: {{ printf "%s-ssh" (include "dev-container-workflow.fullname" .) }}
+            {{- if .Values.ssh.keysSecretName }}
+            - secret:
+                name: {{ .Values.ssh.keysSecretName | quote }}
+            {{- else if .Values.ssh.keys }}
+            - secret:
+                name: {{ printf "%s-ssh-keys" (include "dev-container-workflow.fullname" .) }}
+            {{- end }}
+            - configMap:
+                name: {{ printf "%s-ssh" (include "dev-container-workflow.fullname" .) }}
       - name: "aws"
         projected:
           sources:
-            secret:
-              {{- if .Values.aws.credentialsSecretName }}
-              secretName: {{ .Values.aws.credetialsSecretName }}
-              {{- else }}
-              secretName: {{ printf "%s-aws-credentials" (include "dev-container-workflow.fullname" .) }}
-              {{- end }}
-            configMap:
-              name: {{ printf "%s-aws" (include "dev-container-workflow.fullname" .) }}
-      volumeClaimTemplates:
-      - metadata:
-          name: "home"
-        spec:
-          accessModes: [ {{ .Values.volume.accessMode }} ]
-          storageClassName: {{ .Values.volume.storageClass | quote }}
-          resources:
-            requests:
-              storage: {{ .Values.volume.request | quote }}
+            - secret:
+                {{- if .Values.aws.credentialsSecretName }}
+                name: {{ .Values.aws.credetialsSecretName }}
+                {{- else }}
+                name: {{ printf "%s-aws-credentials" (include "dev-container-workflow.fullname" .) }}
+                {{- end }}
+            - configMap:
+                name: {{ printf "%s-aws" (include "dev-container-workflow.fullname" .) }}

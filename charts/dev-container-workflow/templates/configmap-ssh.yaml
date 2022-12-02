@@ -5,5 +5,11 @@ metadata:
     labels:
         {{- include "dev-container-workflow.labels" . | nindent 8 }}
 data:
-    authorized_keys: {{ .Values.ssh.authorizedKeys }}
-    config: {{ .Values.ssh.config }}
+    {{- with .Values.ssh }}
+    {{- if .authorizedKeys }}
+    authorized_keys: {{ .authorizedKeys }}
+    {{- end }}
+    {{- if .config }}
+    config: {{ .config }}
+    {{- end }}
+    {{- end }}

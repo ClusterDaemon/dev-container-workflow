@@ -60,3 +60,50 @@ Create the name of the service account to use
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Determine user and group ID to use in passwd files
+*/}}
+{{- define "dev-container-workflow.passwd.init" }}
+{{- if .Values.initSecurityContext.runAsUser }}
+user: {{ .Values.initSecurityContext.runAsUser }}
+{{- else if .Values.podSecurityContext.runAsUser }}
+user: {{ .Values.podSecurityContext.runAsUser }}
+{{- else }}
+user: false
+{{- end }}
+{{- if .Values.initSecurityContext.runAsGroup }}
+group: {{ .Values.initSecurityContext.runAsGroup }}
+{{- else if .Values.podSecurityContext.runAsGroup }}
+group: {{ .Values.podSecurityContext.runAsGroup }}
+{{- else }}
+group: false
+{{- end }}
+{{- end }}
+
+{{- define "dev-container-workflow.passwd" }}
+{{- if .Values.securityContext.runAsUser }}
+user: {{ .Values.securityContext.runAsUser }}
+{{- else if .Values.podSecurityContext.runAsUser }}
+user: {{ .Values.podSecurityContext.runAsUser }}
+{{- else }}
+user: false
+{{- end }}
+{{- if .Values.securityContext.runAsGroup }}
+group: {{ .Values.securityContext.runAsGroup }}
+{{- else if .Values.podSecurityContext.runAsGroup }}
+group: {{ .Values.podSecurityContext.runAsGroup }}
+{{- else }}
+group: false
+{{- end }}
+{{- end }}
+
+{{- define "dev-container-workflow.float64ToBool" }}
+{{- if and (kindIs "float64" .) (gt . (float64 0)) }}
+result: true
+{{- else if kindIs "bool" . }}
+{{ . }}
+{{- else }}
+result: false
+{{- end }}
+{{- end }}

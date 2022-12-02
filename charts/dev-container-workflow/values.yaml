@@ -1,23 +1,19 @@
-user:
-  username: dhay
-  uid: 1000
-  gid: 1000
+userName: "user"
 
-# Provide base64 encoded values or folded strings. keysSecretName overrides privateKey and publicKey.
 ssh:
   keysSecretName:
-  privateKey: ""
-  publicKey: ""
-  authorizedKeys: ""
-  config: ""
+  keys:
+  authorizedKeys: 
+  config:
 
 aws:
   credentialsSecretName:
-  credentials: ""
-  config: ""
+  credentials: 
+  config: 
+  awsDefaultProfile:
 
 git:
-    config: ""
+    config:
 
 asdf:
     version:
@@ -29,10 +25,10 @@ krew:
 replicaCount: 1
 
 image:
-  repository: dev-container-workflow
+  repository: 
   pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
-  tag: "latest"
+  tag: 
 
 imagePullSecrets: []
 nameOverride: ""
@@ -51,6 +47,16 @@ podAnnotations: {}
 
 podSecurityContext:
   fsGroup: 1000
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroupChangePolicy: "OnRootMismatch"
+
+initSecurityContext:
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: true
+  runAsNonRoot: true
 
 securityContext:
   capabilities:
@@ -58,9 +64,6 @@ securityContext:
     - ALL
   readOnlyRootFilesystem: true
   runAsNonRoot: true
-  runAsUser: 1000
-
-sshPort: 2222
 
 service:
   type: ClusterIP
