@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+    name: {{ printf "%s-aws" (include "longshoreman.fullname" .) }}
+    labels:
+        {{- include "longshoreman.labels" . | nindent 8 }}
+data:
+    {{- with .Values.aws.config }}
+    config: {{ . }}
+    {{- end }}

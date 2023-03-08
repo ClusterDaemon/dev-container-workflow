@@ -1,15 +1,15 @@
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: {{ include "dev-container-workflow.fullname" . }}
+  name: {{ include "longshoreman.fullname" . }}
   labels:
-    {{- include "dev-container-workflow.labels" . | nindent 4 }}
+    {{- include "longshoreman.labels" . | nindent 4 }}
 spec:
   replicas: 1
   serviceName: {{ .Release.Name }}
   selector:
     matchLabels:
-      {{- include "dev-container-workflow.selectorLabels" . | nindent 6 }}
+      {{- include "longshoreman.selectorLabels" . | nindent 6 }}
   volumeClaimTemplates:
   - metadata:
       name: "home"
@@ -26,14 +26,14 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        {{- include "dev-container-workflow.selectorLabels" . | nindent 8 }}
+        {{- include "longshoreman.selectorLabels" . | nindent 8 }}
     spec:
       terminationGracePeriodSeconds: 30
       {{- with .Values.imagePullSecrets }}
       imagePullSecrets:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      serviceAccountName: {{ include "dev-container-workflow.serviceAccountName" . }}
+      serviceAccountName: {{ include "longshoreman.serviceAccountName" . }}
       {{- with .Values.podSecurityContext }}
       securityContext:
         {{- toYaml . | nindent 8 }}
@@ -131,19 +131,19 @@ spec:
       volumes:
       - name: "passwd-init"
         secret:
-          secretName: {{ printf "%s-passwd-init" (include "dev-container-workflow.fullname" .) }}
+          secretName: {{ printf "%s-passwd-init" (include "longshoreman.fullname" .) }}
           defaultMode: 0644
       - name: "passwd"
         secret:
-          secretName: {{ printf "%s-passwd" (include "dev-container-workflow.fullname" .) }}
+          secretName: {{ printf "%s-passwd" (include "longshoreman.fullname" .) }}
           defaultMode: 0644
       - name: "scripts"
         configMap:
-          name: {{ printf "%s-scripts" (include "dev-container-workflow.fullname" .) }}
+          name: {{ printf "%s-scripts" (include "longshoreman.fullname" .) }}
           defaultMode: 0550
       - name: "git"
         configMap:
-          name: {{ printf "%s-git" (include "dev-container-workflow.fullname" .) }}
+          name: {{ printf "%s-git" (include "longshoreman.fullname" .) }}
       - name: "ssh"
         projected:
           sources:
@@ -152,10 +152,10 @@ spec:
                 name: {{ .Values.ssh.keysSecretName | quote }}
             {{- else if .Values.ssh.keys }}
             - secret:
-                name: {{ printf "%s-ssh-keys" (include "dev-container-workflow.fullname" .) }}
+                name: {{ printf "%s-ssh-keys" (include "longshoreman.fullname" .) }}
             {{- end }}
             - configMap:
-                name: {{ printf "%s-ssh" (include "dev-container-workflow.fullname" .) }}
+                name: {{ printf "%s-ssh" (include "longshoreman.fullname" .) }}
       - name: "aws"
         projected:
           sources:
@@ -163,7 +163,7 @@ spec:
                 {{- if .Values.aws.credentialsSecretName }}
                 name: {{ .Values.aws.credetialsSecretName }}
                 {{- else }}
-                name: {{ printf "%s-aws-credentials" (include "dev-container-workflow.fullname" .) }}
+                name: {{ printf "%s-aws-credentials" (include "longshoreman.fullname" .) }}
                 {{- end }}
             - configMap:
-                name: {{ printf "%s-aws" (include "dev-container-workflow.fullname" .) }}
+                name: {{ printf "%s-aws" (include "longshoreman.fullname" .) }}
