@@ -1,4 +1,4 @@
-module github.com/ClusterDaemon/longshoreman-app-manager
+module github.com/ClusterDaemon/longshoreman
 
 go 1.19
 
