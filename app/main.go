@@ -8,6 +8,7 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+    "text/template"
 
 	// Import Kubernetes client libraries
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
