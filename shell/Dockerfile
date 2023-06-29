@@ -1,16 +1,20 @@
-FROM alpine:latest
+FROM ubuntu:22.04
 
 # Install required packages
-RUN apk add --no-cache \
-    bash \
-    openssl \
-    libwebsockets \
-    json-c \
-    ttyd \
-    tmux \
-    vim \
-    curl \
-    ca-certificates
+RUN apt update \
+    && apt install -y \
+        curl \
+        openssl \
+        libwebsockets-dev \
+        libreadline-dev \
+        dialog \
+        man \
+        ttyd \
+        tmux \
+        vim \
+        git \
+        gh \
+    && yes | unminimize
 
 # Expose the ttyd port
 EXPOSE 7681

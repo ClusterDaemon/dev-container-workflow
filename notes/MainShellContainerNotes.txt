@@ -1,0 +1,15 @@
+To begin, I must choose a base docker image. I don't want to build this from scratch. There's no need - and because this is meant to be an interactive development environment, there is a great need for tool availability.
+
+In the first pass of designing this, I think the choice of Alpine was a vain one - it may be small and snappy, but we don't need the main shell container to be incredibly fast to initialize. We DO need extensions to be incredibly fast to initialize. The MSC could take several seconds to start, and nobody would notice.
+
+Additionally, it has to be easy and accessible to install built-in tools. It should be expected that one of the first things an actual user of this product will do is customize the MSC, especially when it comes to baseline text manipulation tools. This has to be made simple by allowing the MSC container to be overridden via its Helm chart, and using FROM in a dockerfile to slap some simple installation commands in. Doing so via init containers seems viable, though not the best option. Installation should be solved for during build, not run.
+
+Because of this, I'm choosing ubuntu-base. Not only is this very well-known, but it's only 25MB to start with, matches my workstation, and makes its easier to do insane things like X11 forwarding over SSH. I'm not here to tell you no, I'm here to make something that works.
+
+On the subject of TMUX and VIM, I'm going to use my configurations. They're very minimal, and contain the necessary state management tools (though not completely, and this will need to be solved for). I might consider building the most necessary state management plugins into the MSC somehow after the dust settles, but I also want to solve this for my own tooling across all of my environments - so it's going into my vim and tmux repos. I should document how necessary this consideration is, because even though the MSC will be managed as a StatefulSet with a harsh PDB, its pod WILL be interrupted, and it's a lot more likely that the infrastructure its running on will not be directly controlled by the user.
+
+As for applications that must run at specific versions in order to be useful (such as kubectl), asdf at first seems like an attractive option - and one that I previously included - but I don't think it fits well with the delivery model of this environment. I don't want the state of the installed applications to be a matter of what's in the persistence layer unless the user chooses to go about it that way, because it sets and overly preservative contract against the persistence layer. This is also why I'm choosing to implement a backup system but leave it disabled by default. Regarding the on-demand handling of tooling versions, the declarative application extension mechanism is in a much better position than the MSC.
+
+
+
+With that out of the way, let's try actually doing it. This will be tested using plain ol' docker daemon.
