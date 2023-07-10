@@ -4,6 +4,7 @@ ARG cluster_version
 ENV cluster_version=$cluster_version 
 
 # Install required applications and build user skeleton
+COPY ./skel /etc/skel
 COPY ./install.sh /install.sh
 RUN /bin/bash /install.sh
 
