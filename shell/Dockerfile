@@ -1,20 +1,11 @@
 FROM ubuntu:22.04
 
-# Install required packages
-RUN apt update \
-    && apt install -y \
-        curl \
-        openssl \
-        libwebsockets-dev \
-        libreadline-dev \
-        dialog \
-        man \
-        ttyd \
-        tmux \
-        vim \
-        git \
-        gh \
-    && yes | unminimize
+ARG cluster_version 
+ENV cluster_version=$cluster_version 
+
+# Install required applications and build user skeleton
+COPY ./install.sh /install.sh
+RUN /bin/bash /install.sh
 
 # Expose the ttyd port
 EXPOSE 7681
