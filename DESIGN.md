@@ -17,50 +17,34 @@ This document outlines the design of a remote development shell workflow built o
 The proposed system is a remote development shell workflow with the following features:
 
 - Built within containers
-- Delivered via Kubernetes
-- Accessible remotely via a web browser (using ttyd)
-- Built-in text and code manipulation programs
-- Extendable by running applications via Kubernetes jobs
-- Strongly consistent state management via a shared POSIX filesystem (e.g., NFS)
+- Orchestrated via Kubernetes, delivered via Helm
+- Accessible remotely via a web browser (using ttyd) or via SSH
+- Built-in text and code manipulation programs (at least)
+- Extendable by running applications via Kubernetes pods with pre-defined manifests
+- Strong consistent shared state for extensions via a shared filesystem (e.g., NFS)
 
 ## Architecture
 
 The architecture consists of the following components:
 
+- Remote Shell
+  - File transfer via zmodem
+  - Accessible via SSH or in-browser via ttyd
 - Main Shell Container (MSC)
-  - Bash shell with utilities
-  - Accessible in a browser via ttyd
-  - Responsible for job control
-  - ZMODEM file transfer support
-- Longshoreman Apps
-  - Integrated with the system as shell commands via Longshoreman Job Manager (LJM)
-  - Executed as a Kubernetes pod or job+pod, managed by LJM.
-  - Remote IO support, enabling support for stream redirection, herestrings, heredocs, and pipes via the MSC.
-- Longshoreman Job Manager
-  - Go binary that is responsible for managing pod or job manifests in K8s and responding to feedback
-  - Handles container I/O streams to and from MSC.
-
-### Main Shell Container
-
-The main shell container serves as the primary environment for the user. It is accessible via a web browser through ttyd. This container includes the following features:
-
-- Multiplexing via TMUX
-- Editing and IDE via VIM
-- Persistent working state
-- Built-in text and code manipulation programs (e.g., grep, sed, awk)
-- Extensibility via Longshoreman Jobs
-
-### Longshoreman Apps
-
-Kubernetes pods extend the functionality of the main shell container. They behave like traditional GNU POSIX compliant command-line applications. They generally must:
-
-- Accept stdin
-- Produce stdout and stderr
-- Return exit codes
-- Resolve provided file paths
-
-Longshoreman Apps are packaged via container images and K8s manifests. They must be either jobs or pods, or a similar system that implements the job or pod spec. The Longshoreman Job Manager (LJM) must be able to find a manifest directory that matches the name of the application, and there must be exactly one job or pod object in that manifest.
-
-### Shared Filesystem
-
-A shared filesystem, such as NFS, may be used to provide a strongly consistent persistence store between the main shell container and Longshoreman Apps. This filesystem must be POSIX compliant and accessible to the app that extends functionality.
+  - Bash shell with basic utilities
+  - Entrypoint for all commands
+  - Contains all components required for baseline text-based development (vim, tmux, sed, awk, grep, etc).
+  - May have additional "built-in" applications installed, though doing so would require a sidecar or rebuild.
+- Persistence
+  - Longshoreman accomplishes persistence via a readWriteMany persistent volume. This is because persistence is meant to be shared with extension applications in the same cluster, and the nature of those extension applications is varied and unknown.
+  - Additional or alternative methods of persistence may be defined, both for the main shell container and extension applications. However, this use-case is not addressed via the Helm chart.
+- Extension applications
+  - Extensions are not installed, they are declared in a plain YAML K8s manifest (one directory per extension).
+  - Extensions must declare all of the components they need to work in their directories, though may reference existing systems and objects. Extensions should be portable.
+  - Extensions must declare a "run workload", which defines the workload that is used to run the extension application. Longshoreman will manage the state of this workload. It should usually be a singular bare pod with few exceptions.
+  - Extensions may include daemons, though these should be run as StefulSet, Deployment, Daemonset, or similar. These daemons will be executed on extension initialization, NOT during extension command run. This is support command dependencies with proper load ordering to avoid delays and errors in extension command execution.
+  - Extensions are initialized when Longshoreman starts, which equates to applying all but the run workload.
+  - The extension run workload is only executed when the extension is called via the main shell container.
+  - Extensions are shell aliases, which call the Longshoreman extension manager to operate the run workload. Run workloads are not meant to be run directly, as the extension manager supplies the run workload with configuration via YAML document merging before submitting the run workload manifest to the cluster.
+  - Extensions are meant to accomplish an identical experience to running commands locally, despite running in a remote container. The default location for run workloads is defined either in the extension manifest, or at runtime. If no location is supplied, it will be applied to the same cluster and namespace that the main shell container is running in.
+  - Extensions must allow for typical shell execution semantics, where input and output streams traverse via the main shell container as a cental hub. Because of this, the MSC must have the resources available to sustain the input and output traffic of running extensions. This can be mitigated using the persistence layer, or by explicitly configuring extension output and input outside of invocation within its run workload manifest.
