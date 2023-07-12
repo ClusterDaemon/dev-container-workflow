@@ -3,6 +3,8 @@ FROM longshoreman-shell:$LONGSHOREMAN_TAG as main
 
 FROM ubuntu:22.04
 
+ENV USERS='[{"userName":"user"}]'
+
 COPY --from=main /users/* /users/
 COPY ./users.sh /users.sh
 RUN rm -f /etc/passwd /etc/group /etc/shadow /etc/gshadow \
@@ -20,11 +22,11 @@ ENTRYPOINT ["/users.sh"]
 #   groupName: string,
 #   gid: number
 # ]
-# $USERS: [
+# $USERS: [{
 #   userName: string,
 #   primaryGroup: string,
 #   uid: number,
 #   gid: number,
 #   additionalGroups: list(string),
 #   hashedPassword: string
-# ]
+# }]
