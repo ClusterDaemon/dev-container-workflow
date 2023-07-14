@@ -8,8 +8,8 @@ spec:
   type: {{ .Values.service.type }}
   ports:
     - port: {{ .Values.service.port }}
-      targetPort: 2222
+      targetPort: 7681
       protocol: TCP
-      name: ssh
+      name: ttyd
   selector:
     {{- include "longshoreman.selectorLabels" . | nindent 4 }}
