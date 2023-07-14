@@ -5,28 +5,11 @@ FROM ubuntu:22.04
 
 ENV USERS='[{"userName":"user"}]'
 
-COPY --from=main /users/* /users/
+COPY --from=main /etc/opt/users/* /etc/
+COPY ./skel /etc/skel
+COPY ./install.sh /install.sh
 COPY ./users.sh /users.sh
-RUN rm -f /etc/passwd /etc/group /etc/shadow /etc/gshadow \
-    && ln -s /users/passwd /etc/passwd \
-    && ln -s /users/group /etc/group \
-    && ln -s /users/shadow /etc/shadow \
-    && ln -s /users/gshadow /etc/gshadow \
-    && apt-get update \
-    && apt-get install -y jq
+
+RUN /bin/bash /install.sh
 
 ENTRYPOINT ["/users.sh"]
-# Entrypint accepts no arguments, and uses only environment.
-# The environment expects a series of string-serialized JSON, for which the schema is:
-# $GROUPS: [
-#   groupName: string,
-#   gid: number
-# ]
-# $USERS: [{
-#   userName: string,
-#   primaryGroup: string,
-#   uid: number,
-#   gid: number,
-#   additionalGroups: list(string),
-#   hashedPassword: string
-# }]
