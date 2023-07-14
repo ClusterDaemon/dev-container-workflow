@@ -1,4 +1,0 @@
-#!/bin/sh
-for plugin in $KREW_PLUGINS; do
-    kubectl krew install $plugin
-done
