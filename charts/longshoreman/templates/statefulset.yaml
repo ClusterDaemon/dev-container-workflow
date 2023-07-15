@@ -10,15 +10,6 @@ spec:
   selector:
     matchLabels:
       {{- include "longshoreman.selectorLabels" . | nindent 6 }}
-  volumeClaimTemplates:
-  - metadata:
-      name: "home"
-    spec:
-      accessModes: [ {{ .Values.volume.accessMode }} ]
-      storageClassName: {{ .Values.volume.storageClass | quote }}
-      resources:
-        requests:
-          storage: {{ .Values.volume.request | quote }}
   template:
     metadata:
       {{- with .Values.podAnnotations }}
@@ -44,78 +35,53 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "longshoreman:latest"
-          # image: "{{ .Values.image.repository | default .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: "{{ .Values.image.repository | default .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - name: ssh
-              containerPort: 2222
+            - name: ttyd
+              containerPort: 7681
               protocol: TCP
           readinessProbe:
             tcpSocket:
-              port: 2222
+              port: 7681
             initialDelaySeconds: 5
             periodSeconds: 10
           livenessProbe:
             tcpSocket:
-              port: 2222
+              port: 7681
             initialDelaySeconds: 15
             periodSeconds: 20
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
           volumeMounts:
-          - name: "passwd"
-            mountPath: "/etc/passwd"
-            subPath: "passwd"
-          - name: "home"
-            mountPath: "/home"
-          - name: "aws"
-            mountPath: "/mnt/aws"
-          {{- if or .Values.ssh.keysSecretName .Values.ssh.keys }}
-          - name: "ssh"
-            mountPath: "/mnt/ssh"
-          {{- end }}
-          - name: "git"
-            mountPath: "/mnt/git"
+            - name: "home"
+              mountPath: "/home"
+            - name: "config"
+              mountPath: "/etc/opt/config"
+            - name: "secret"
+              mountPath: "/etc/opt/secret"
+            - name: "users"
+              mountPath: "/etc/opt/users"
       initContainers:
         - name: "{{ .Chart.Name }}-init"
           env:
-            - name: "SCRIPTS_VOLUME"
-              value: "/scripts"
-            - name: "HOME"
-              value: "/home"
-            - name: "AWS_VOLUME"
-              value: "/mnt/aws"
-            - name: "GIT_VOLUME"
-              value: "/mnt/git"
-            - name: "SSH_VOLUME"
-              value: "/mnt/ssh"
-            - name: "ASDF_VERSION"
-              value: {{ .Values.asdf.version | quote }}
-            - name: "ASDF_PLUGINS"
-              value: {{ .Values.asdf.plugins | quote }}
-            - name: "KREW_PLUGINS"
-              value: {{ .Values.krew.plugins | quote }}
-          {{- with .Values.initSecurityContext }}
+            - name: "USERS_DIR"
+              value: "/etc/opt/users"
+            - name: "USERS"
+              value: {{ .Values.users | toJson | quote }}
+            - name: "GROUPS"
+              value: {{ .Values.groups | toJson | quote }}
+          {{- with .Values.init.SecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "longshoreman-init:latest"
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          workingDir: "/"
-          command: ['sh', '-c', 'sleep 15000']
+          image: {{ printf "%s:%s" (.Values.init.image.repository | default (printf "%s-init" (include "longshoreman.name" .) )) (.Values.init.image.tag | default .Chart.AppVersion) | trimPrefix ":" }}
+          imagePullPolicy: {{ .Values.init.image.pullPolicy }}
           volumeMounts:
-          - name: "passwd-init"
-            mountPath: "/etc/passwd"
-            subPath: "passwd"
-          - name: "home"
-            mountPath: "/home"
-          - name: "scripts"
-            mountPath: "/scripts"
-          {{- if or .Values.ssh.keysSecretName .Values.ssh.keys }}
-          - name: "git"
-            mountPath: "/git"
-          {{- end }}
+            - name: "users"
+              mountPath: "/etc/opt/users"
+            - name: "home"
+              mountPath: "/home"
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
@@ -129,41 +95,21 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       volumes:
-      - name: "passwd-init"
-        secret:
-          secretName: {{ printf "%s-passwd-init" (include "longshoreman.fullname" .) }}
-          defaultMode: 0644
-      - name: "passwd"
-        secret:
-          secretName: {{ printf "%s-passwd" (include "longshoreman.fullname" .) }}
-          defaultMode: 0644
-      - name: "scripts"
-        configMap:
-          name: {{ printf "%s-scripts" (include "longshoreman.fullname" .) }}
-          defaultMode: 0550
-      - name: "git"
-        configMap:
-          name: {{ printf "%s-git" (include "longshoreman.fullname" .) }}
-      - name: "ssh"
-        projected:
-          sources:
-            {{- if .Values.ssh.keysSecretName }}
-            - secret:
-                name: {{ .Values.ssh.keysSecretName | quote }}
-            {{- else if .Values.ssh.keys }}
-            - secret:
-                name: {{ printf "%s-ssh-keys" (include "longshoreman.fullname" .) }}
-            {{- end }}
-            - configMap:
-                name: {{ printf "%s-ssh" (include "longshoreman.fullname" .) }}
-      - name: "aws"
-        projected:
-          sources:
-            - secret:
-                {{- if .Values.aws.credentialsSecretName }}
-                name: {{ .Values.aws.credetialsSecretName }}
-                {{- else }}
-                name: {{ printf "%s-aws-credentials" (include "longshoreman.fullname" .) }}
-                {{- end }}
-            - configMap:
-                name: {{ printf "%s-aws" (include "longshoreman.fullname" .) }}
+        - name: "home"
+          # Set this to hostpath until a better built-in persistence layer is in place.
+          hostPath:
+            Directory: "/home"
+        - name: "users"
+          emptyDir:
+            medium: "Memory"
+            sizeLimit: "10Mi"
+        - name: "config"
+          configMap:
+            name: {{ printf "%s-config" (include "longshoreman.fullname" .) }}
+            defaultMode: 0660
+            optional: true
+        - name: "secret"
+          secret:
+            secretName: {{ printf "%s-secret" (include "longshoreman.fullname" .) }}
+            defaultMode: 0660
+            optional: true
