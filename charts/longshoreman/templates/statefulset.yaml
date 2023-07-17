@@ -1,3 +1,5 @@
+{{- $initImage := .Values.init.image.repository | default (printf "%s-init" (include "longshoreman.name" .)) -}}
+{{- $image := .Values.image.repository | default (include "longshoreman.name" .) -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -35,7 +37,7 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: "{{ .Values.image.repository | default .Chart.Name }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          image: {{ (printf "%s:%s" $image (.Values.image.tag | default .Chart.AppVersion)) | trimPrefix ":" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: ttyd
@@ -75,7 +77,7 @@ spec:
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ printf "%s:%s" (.Values.init.image.repository | default (printf "%s-init" (include "longshoreman.name" .) )) (.Values.init.image.tag | default .Chart.AppVersion) | trimPrefix ":" }}
+          image: {{ (printf "%s:%s" $initImage (.Values.init.image.tag | default .Chart.AppVersion)) | trimPrefix ":" }}
           imagePullPolicy: {{ .Values.init.image.pullPolicy }}
           volumeMounts:
             - name: "users"
