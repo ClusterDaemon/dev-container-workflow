@@ -12,4 +12,4 @@ COPY ./users.sh /users.sh
 
 RUN /bin/bash /install.sh
 
-ENTRYPOINT ["/users.sh"]
+ENTRYPOINT ["/user.sh"]

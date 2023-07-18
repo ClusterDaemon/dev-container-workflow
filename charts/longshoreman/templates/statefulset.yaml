@@ -1,5 +1,7 @@
-{{- $initImage := .Values.init.image.repository | default (printf "%s-init" (include "longshoreman.name" .)) -}}
 {{- $image := .Values.image.repository | default (include "longshoreman.name" .) -}}
+{{- $imageTag := .Values.image.tag | default .Chart.AppVersion -}}
+{{- $initImage := .Values.init.image.repository | default (printf "%s-init" (include "longshoreman.name" .)) -}}
+{{- $initImageTag := .Values.init.image.tag | default .Chart.AppVersion -}}
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
@@ -27,17 +29,18 @@ spec:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       serviceAccountName: {{ include "longshoreman.serviceAccountName" . }}
-      {{- with .Values.podSecurityContext }}
       securityContext:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
+        runAsUser: {{ .Values.user.uid }}
+        runAsGroup: {{ .Values.user.gid }}
+        fsGroup: {{ .Values.user.gid }}
+        fsGroupChangePolicy: "OnRootMismatch"
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ (printf "%s:%s" $image (.Values.image.tag | default .Chart.AppVersion)) | trimPrefix ":" }}
+          image: {{ (printf "%s:%s" $image $imageTag) | trimPrefix "/" }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - name: ttyd
@@ -70,14 +73,12 @@ spec:
             - name: "USERS_DIR"
               value: "/etc/opt/users"
             - name: "USERS"
-              value: {{ .Values.users | toJson | quote }}
-            - name: "GROUPS"
-              value: {{ .Values.groups | toJson | quote }}
+              value: {{ .Values.user | toJson | quote }}
           {{- with .Values.init.SecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}
           {{- end }}
-          image: {{ (printf "%s:%s" $initImage (.Values.init.image.tag | default .Chart.AppVersion)) | trimPrefix ":" }}
+          image: {{ printf "%s:%s" $initImage $initImageTag | trimPrefix "/" }}
           imagePullPolicy: {{ .Values.init.image.pullPolicy }}
           volumeMounts:
             - name: "users"
