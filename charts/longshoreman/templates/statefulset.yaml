@@ -72,8 +72,8 @@ spec:
           env:
             - name: "USERS_DIR"
               value: "/etc/opt/users"
-            - name: "USERS"
-              value: {{ .Values.user | toJson | quote }}
+          args:
+            - {{ .Values.user | toJson | quote }}
           {{- with .Values.init.SecurityContext }}
           securityContext:
             {{- toYaml . | nindent 12 }}

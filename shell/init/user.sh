@@ -25,18 +25,30 @@ if ! grep -qs /home /proc/mounts; then
 fi
 
 if grep -qs "$users_dir " /proc/mounts; then
-    echo "Error: No volume is mounted to $users_dir. Identity export failed. Set \$USERS_DIR and mount a volume there."
+    echo "Error: No volume is mounted to $users_dir. Identity export failed! Set \$USERS_DIR and mount a volume there."
     exit 2
 fi
 
-# Create an associative array using the input JSON
+# Create an associative array using the input JSON, so we can access values within the shell.
 declare -A user
 
 while IFS="=" read -r key value; do
     user["$key"]="$value"
 done < <(jq -r 'to_entries|map("\(.key)=\(.value)")|.[]' <<<$1)
 
-# Create user, build user directory if it does not already exist, sync changes from /etc/skel
+# Validate the supplied JSON against schema
+valid_keys=("userName" "uid" "gid" "groupName" "hashedPassword")
+required_keys=("userName")
+for key in ${valid_keys[@]}; do
+    if [[ ! -v user[$key] && ${required_keys[*]} =~ $key ]]; then
+        echo "Error: Invalid JSON input! Key $key is required, and has no default."
+        exit 2
+    elif [[ ! -v user[key] ]]; then
+        echo "Warning: Invalid JSON input! Key $key is not expected, and will be ignored."
+        exit_code=1
+    fi
+done
+
 # Build arguments to adduser
 args=()
 if [[ -n ${user[uid]} ]]; then
@@ -44,22 +56,27 @@ if [[ -n ${user[uid]} ]]; then
 else
     args+=( "--uid $default_uid" )
 fi
+
 if [[ -n ${user[gid]} ]]; then
     args+=( "--gid ${user[gid]}" )
 else
     args+=( "--gid $default_uid" )
 fi
+
 (( test ${user[groupName]} != ${user[userName]} )) && args+=( "--ingroup ${user[groupName]}" )
+
 args+=( "--disabled-password" )
 args+=( --gecos x )
 
 # Execute adduser actual
-adduser ${args[@]}
+adduser ${args[@]} || {
+    echo "Error: failed to add user ${user[userName]}!"
+    exit 2
+}
 
 # Place hashed passwords directly into /etc/shadow. The default empty password results in passwordless login.
-echo "Updating hashedPassword in /etc/shadow for ${user[userName]}."
 sed -i "/^${user[userName]}:/ s|[^:]*|${user[hashedPassword]}|2" /etc/shadow || {
-    echo "Error: Cannot update hashedPassword in /etc/shadow for ${user[userName]}. Identity creation failed."
+    echo "Error: Cannot update hashedPassword in /etc/shadow for ${user[userName]}. Identity creation failed!"
     exit 2
 }
 
@@ -75,7 +92,7 @@ fi
 
 # Copy resulting user information into a volume shared with a longshoreman-shell instance.
 cp /etc/passwd /etc/group /etc/shadow /etc/gshadow "$users_dir" || {
-    echo "Copying system identities to shared users volume failed. Identity export failed."
+    echo "Copying system identities to shared users volume failed. Identity export failed!"
     exit 2
 }
 
