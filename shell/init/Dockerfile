@@ -1,5 +1,5 @@
 ARG LONGSHOREMAN_TAG="latest"
-FROM longshoreman-shell:$LONGSHOREMAN_TAG as main
+FROM longshoreman:$LONGSHOREMAN_TAG as main
 
 FROM ubuntu:22.04
 

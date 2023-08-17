@@ -101,7 +101,8 @@ spec:
         - name: "home"
           # Set this to hostpath until a better built-in persistence layer is in place.
           hostPath:
-            Directory: "/home"
+            path: "/home"
+            type: "Directory"
         - name: "users"
           emptyDir:
             medium: "Memory"
