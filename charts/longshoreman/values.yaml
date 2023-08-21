@@ -1,38 +1,30 @@
-userName: "user"
+# Override the name of this Helm chart within rendered manifests
+nameOverride: ""
+# Override the name of this Helm chart in addition to its release within rendered manifests
+fullnameOverride: ""
 
-ssh:
-  keysSecretName:
-  keys:
-  authorizedKeys: 
-  config:
-
-aws:
-  credentialsSecretName:
-  credentials: 
-  config: 
-  awsDefaultProfile:
-
-git:
-    config:
-
-asdf:
-    version:
-    plugins: "awscli kubectl sops helm kustomize tflint"
-
-krew:
-    plugins:
-
-replicaCount: 1
+user:
+  # Define POSIX user name
+  userName: "user"
+  # Define POSIX user ID.
+  uid: 1000
+  primaryGroup: "user"
+  gid: 1000
+  # This is a password as it appears in /etc/shadow. If you are unsure of how it is generated, use `adduser` locally.
+  # Setting a password will disable passwordless login.
+  hashedPassword:
 
 image:
+  # Overrides the OCI registry from the cluster default
+  registry:
+  # Overrides the image/repository name
   repository: 
-  pullPolicy: IfNotPresent
   # Overrides the image tag whose default is the chart appVersion.
   tag: 
+  # By default use container image cache
+  pullPolicy: "IfNotPresent"
 
 imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
 
 serviceAccount:
   # Specifies whether a service account should be created
@@ -43,21 +35,6 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-podAnnotations: {}
-
-podSecurityContext:
-  fsGroup: 1000
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroupChangePolicy: "OnRootMismatch"
-
-initSecurityContext:
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: true
-  runAsNonRoot: true
-
 securityContext:
   capabilities:
     drop:
@@ -65,22 +42,42 @@ securityContext:
   readOnlyRootFilesystem: true
   runAsNonRoot: true
 
+configSourceDir: "config"
+secretSourceDir: "secret"
+
+# Init container configuration. Must be able to read/write root fs as root.
+init:
+  SecurityContext:
+    capabilities:
+      drop:
+      - ALL
+    readOnlyRootFilesystem: false
+    runAsNonRoot: false
+  image:
+    registry:
+    # Defaults to chart name with a suffix of "-init"
+    repository:
+    tag:
+    pullPolicy: IfNotPresent
+
 service:
   type: ClusterIP
-  port: 22
+  port: 7681
 
 resources:
   requests:
     cpu: 1
     memory: 1Gi
 
+volume:
+  accessMode:
+  storageClass:
+  request:
+
+podAnnotations: {}
+
 nodeSelector: {}
 
 tolerations: []
 
 affinity: {}
-
-volume:
-  accessMode: "ReadWriteOnce"
-  storageClassName: "standard"
-  request: "5Gi"

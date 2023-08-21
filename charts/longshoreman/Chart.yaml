@@ -1,9 +1,9 @@
 apiVersion: v2
-name: dev-container-workflow
+name: longshoreman
 description: A CLI development workflow delivered to Kubernetes via Helm
 
 type: application
 
-version: 0.1.0
+version: 0.3.1
 
-appVersion: "0.1.0"
+appVersion: "v0.0.10"
